@@ -1,6 +1,5 @@
 import { 是数字 } from "./util/stringUtil";
-
-const sqlite3 = require('sqlite3')
+import * as sqlite3 from 'sqlite3'
 
 
 /**
