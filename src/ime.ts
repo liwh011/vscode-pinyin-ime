@@ -66,6 +66,9 @@ const incompletePinyinProcess = (pys: string[]) => {
  * @returns 候选词列表
  */
 const makeAllCandidates = async (py: string) => {
+    if (py === '')
+        return []
+
     let splited = splitPinyin(py)
     splited = incompletePinyinProcess(splited)
 
@@ -88,36 +91,50 @@ const makeAllCandidates = async (py: string) => {
         })
         allCandidates.push(...subCandidates)
     }
+
+    // 候选词的第一项应该尽可能地匹配完所有拼音
+    // 下面将不断取候选词的第一项来匹配、拼接
+    if (allCandidates.length > 0 && allCandidates[0].remain !== '') {
+        let completeCandidate = { ...allCandidates[0] }
+        // 取剩余未匹配部分来继续匹配
+        const subCandidate = (await makeAllCandidates(completeCandidate.remain))[0]
+        if (subCandidate) {
+            completeCandidate.pinyin += subCandidate.pinyin
+            completeCandidate.remain = subCandidate.remain
+            completeCandidate.word += subCandidate.word
+            allCandidates.unshift(completeCandidate)
+        }
+    }
     return allCandidates
 }
 
 
 /**
  * IME主入口
- * @param 字符串 拼音串，无分隔符
- * @param 数量 候选词数量
+ * @param pyStr 拼音串，无分隔符
+ * @param candidateAmount 候选词数量
  * @returns 候选词
  */
-const imeMain = async (字符串: string, 数量: number = 5): Promise<{
+const imeMain = async (pyStr: string, candidateAmount: number = 5): Promise<{
     remain: string;
     pinyin: string;
     word: string;
 }[]> => {
-    if (字符串.indexOf('\r') != -1 || 字符串.indexOf('\n') != -1) return []
-    
+    if (pyStr.indexOf('\r') != -1 || pyStr.indexOf('\n') != -1) return []
+
     // 因为要处理输入数字来选择对应候选词的逻辑
     // 这里将首先找出第一个数字i出现的位置，将其左边的拼音拿去寻找候选词列表，取索引为i的候选词项
     // 然后，将该候选词未能匹配到的部分，与数字右边的字符串合并，递归地调用本函数
     // 最后，将递归调用的结果，对每个候选词加上当前所选择的部分，作为返回值返回。
 
-    for (let i = 0; i < 字符串.length; i++) {
-        if (是数字(字符串[i])) {
+    for (let i = 0; i < pyStr.length; i++) {
+        if (是数字(pyStr[i])) {
             // 取数字左边的拼音串处理
-            const subPinyinStr = 字符串.substring(0, i)
+            const subPinyinStr = pyStr.substring(0, i)
             const subStrCandidates = await makeAllCandidates(subPinyinStr)
 
             // 根据该数字选择对应候选词
-            const choiceIdx = parseInt(字符串[i]) - 1
+            const choiceIdx = parseInt(pyStr[i]) - 1
             if (choiceIdx >= subStrCandidates.length)
                 return []
             const choiceWord = subStrCandidates[choiceIdx].word
@@ -126,7 +143,7 @@ const imeMain = async (字符串: string, 数量: number = 5): Promise<{
 
             // 该候选词未能匹配到的部分，与数字右边的字符串合并
             const leftRemain = subPinyinStr.substr(subPinyinStr.length - choiceRemain.length)
-            const rightRemain = 字符串.substring(i + 1)
+            const rightRemain = pyStr.substring(i + 1)
             let result = (await imeMain(leftRemain + rightRemain)).map((v) => {
                 v.pinyin = choicePinyin + v.pinyin
                 v.word = choiceWord + v.word
@@ -142,8 +159,8 @@ const imeMain = async (字符串: string, 数量: number = 5): Promise<{
     }
 
     // 此处即剩余字符串没有数字的情况，将查询结果直接返回即可
-    const r = await makeAllCandidates(字符串)
-    return r.slice(0, 数量)
+    const r = await makeAllCandidates(pyStr)
+    return r.slice(0, candidateAmount)
 }
 
 
