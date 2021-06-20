@@ -1,7 +1,7 @@
 {
 	"name": "chinese-ime",
 	"displayName": "拼音输入法",
-	"description": "基于VSC补全项实现的简易拼音输入法，避免使用中文编程时需要来回按Shift切换中英输入的问题",
+	"description": "无需切换中文输入法即可使用拼音输入汉字",
 	"version": "0.0.1",
 	"publisher": "liwh011",
 	"repository": {
@@ -20,12 +20,18 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
-		"commands": [
-			{
-				"command": "chinese-ime.helloWorld",
-				"title": "Hello World"
+		"configuration": {
+			"title": "拼音输入法",
+			"properties": {
+				"拼音输入法.候选词数量": {
+					"type": "integer",
+					"description": "展示多少个候选词",
+					"default": 5,
+					"maximum": 15,
+					"minimum": 1
+				}
 			}
-		]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

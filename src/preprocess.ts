@@ -28,7 +28,7 @@ function 获得当前输入字段(): Promise<string | null> {
 }
 
 
-var 防递归锁 = false
+
 export async function provideCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position,
@@ -37,14 +37,10 @@ export async function provideCompletionItems(
 ) {
     var 输入字段 = await 获得当前输入字段() || ''
 
-    if (防递归锁) return []
-    防递归锁 = true
 
-    log('================')
-    log('输入字段', 输入字段)
+    // log('================')
+    // log('输入字段', 输入字段)
 
-
-    防递归锁 = false
 
 
     // 如果分段输入一个词组，例如“多重笛卡尔积”，输入顺序是：先输入“多重”，再输入“笛卡尔积”。
@@ -57,13 +53,13 @@ export async function provideCompletionItems(
 
 
 
-    const 输入法 = ime
-    let 输入法提供的词 = await 输入法(英文部分).catch(e => {
+    const candidatesAmount = vscode.workspace.getConfiguration('拼音输入法').get('候选词数量') as number
+    let 输入法提供的词 = await ime(英文部分, candidatesAmount).catch(e => {
         console.error(e)
         vscode.window.showInformationMessage(`调用输入法出错：` + e)
     }) || []
+    
 
-    // let 补全项 = 输入法提供的词.map(a => 非英文部分 + a.word + a.remain + '\t' + 英文部分 + ' ' + a.pinyin).map(a => new vscode.CompletionItem(a, vscode.CompletionItemKind.Text)) || []
 
     let i = 0
     let 补全项 = Array.from(输入法提供的词, (v) => {
@@ -74,6 +70,7 @@ export async function provideCompletionItems(
         item.detail = v.pinyin
         return item
     })
+
 
     // 过滤下面的部分
     // 1 不包含中文的关键词没必要加拼音,因此过滤
@@ -86,6 +83,7 @@ export async function provideCompletionItems(
 
     return new vscode.CompletionList(补全项, true)
 }
+
 
 
 export function resolveCompletionItem(item: any, token: vscode.CancellationToken) {
