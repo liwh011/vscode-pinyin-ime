@@ -15,7 +15,7 @@ const searchDB = (py: string, length: number): Promise<{ pinyin: string; word: s
 
         const db = new sqlite3.Database(__dirname + '/test.db');
         db.all(
-            "select pinyin, word from word where pinyin like ? and word like ? order by count",
+            "select pinyin, word from word where pinyin like ? and word like ? order by count desc;",
             py, '_'.repeat(length),
             (err: any, row: { pinyin: string; word: string; }[]) => {
                 if (err) reject(err)
@@ -140,7 +140,7 @@ const imeMain = async (字符串: string, 数量: number = 5): Promise<{
             return result
         }
     }
-    
+
     // 此处即剩余字符串没有数字的情况，将查询结果直接返回即可
     const r = await makeAllCandidates(字符串)
     return r.slice(0, 数量)

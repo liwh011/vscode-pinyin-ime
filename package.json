@@ -4,6 +4,10 @@
 	"description": "基于VSC补全项实现的简易拼音输入法，避免使用中文编程时需要来回按Shift切换中英输入的问题",
 	"version": "0.0.1",
 	"publisher": "liwh011",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/liwh011/vscode-pinyin-ime.git"
+	},
 	"engines": {
 		"vscode": "^1.57.0"
 	},
