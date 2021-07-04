@@ -1,31 +1,11 @@
 import { log } from "console";
 import * as vscode from "vscode";
 import ime from './ime'
-import { 数组去重 } from "./util/arrayUtil";
 import { 包含中文, 是纯字母, 是数字 } from './util/stringUtil'
 import * as R from 'ramda'
+import { 获得当前输入字段 } from "./util/vscUtil";
 
 
-function 获得当前输入字段(): Promise<string | null> {
-    // 我们需要的是文本被编辑后而非编辑前的情况。
-    // 为避免意外获得文本被编辑前的情况，加个定时器，确保函数在文本修改后执行。
-    // 这样函数就变成了异步的，于是加了Promise。
-    return new Promise((res, rej) => {
-        setTimeout(() => {
-            var 编辑器 = vscode.window.activeTextEditor
-            if (!编辑器) return res(null)
-
-            var 光标位置 = 编辑器.selections[0].anchor;
-            var 文件 = 编辑器.document
-            var 范围 = 文件.getWordRangeAtPosition(光标位置)
-
-            if (范围 == null) return res(null)
-
-            var 当前输入字段 = 文件.getText(范围)
-            return res(当前输入字段)
-        }, 0)
-    })
-}
 
 
 
