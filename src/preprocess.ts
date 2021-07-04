@@ -1,8 +1,7 @@
 import { log } from "console";
 import * as vscode from "vscode";
 import ime from './ime'
-import { 包含中文, 是纯字母, 是数字 } from './util/stringUtil'
-import * as R from 'ramda'
+import { 包含中文 } from './util/stringUtil'
 import { 获得当前输入字段 } from "./util/vscUtil";
 
 
@@ -18,18 +17,13 @@ export async function provideCompletionItems(
     var 输入字段 = await 获得当前输入字段() || ''
 
 
-    // log('================')
-    // log('输入字段', 输入字段)
-
-
 
     // 如果分段输入一个词组，例如“多重笛卡尔积”，输入顺序是：先输入“多重”，再输入“笛卡尔积”。
     // 当输入到“多重d”的时候，变量`输入字段`值为“多重d”。如果直接拿这个词去调用输入法，很难得到正确的结果。
     // 但如果使用"d"去调用输入法，得到的结果并不以"多重"开头，导致不会弹出提示框。
     // 因此，这里的方案是，拆分非英文部分和英文部分，用英文部分调用输入法，再在结果前面补上非英文部分。
-    // 注意：这个策略在一些情况下会失效，例如在中文当中输入时。
-    var 非英文部分 = 输入字段.split('').filter(a => !是纯字母(a) && !是数字(a)).join('')
-    var 英文部分 = 输入字段.split('').filter(a => 是纯字母(a) || 是数字(a)).join('')
+    const pattern = /^.*?([\u4e00-\u9fa5\u3007]*)([A-Za-z0-9]*)$/
+    const [_, 非英文部分, 英文部分] = 输入字段.match(pattern) || ['', '', '']
 
 
 
@@ -38,7 +32,7 @@ export async function provideCompletionItems(
         console.error(e)
         vscode.window.showInformationMessage(`调用输入法出错：` + e)
     }) || []
-    
+
 
 
     let i = 0
