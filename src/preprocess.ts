@@ -1,71 +1,65 @@
 import { log } from "console";
 import * as vscode from "vscode";
-import ime from './ime'
-import { 包含中文 } from './util/stringUtil'
+import ime from "./ime";
+import { 包含中文 } from "./util/stringUtil";
 import { 获得当前输入字段 } from "./util/vscUtil";
 
-
-
-
-
 export async function provideCompletionItems(
-    document: vscode.TextDocument,
-    position: vscode.Position,
-    token: vscode.CancellationToken,
-    context: vscode.CompletionContext
+  document: vscode.TextDocument,
+  position: vscode.Position,
+  token: vscode.CancellationToken,
+  context: vscode.CompletionContext
 ) {
-    var 输入字段 = await 获得当前输入字段() || ''
+  const 输入字段 = (await 获得当前输入字段()) || "";
 
+  // 如果分段输入一个词组，例如“多重笛卡尔积”，输入顺序是：先输入“多重”，再输入“笛卡尔积”。
+  // 当输入到“多重d”的时候，变量`输入字段`值为“多重d”。如果直接拿这个词去调用输入法，很难得到正确的结果。
+  // 但如果使用"d"去调用输入法，得到的结果并不以"多重"开头，导致不会弹出提示框。
+  // 因此，这里的方案是，拆分非英文部分和英文部分，用英文部分调用输入法，再在结果前面补上非英文部分。
+  const pattern = /^.*?([\u4e00-\u9fa5\u3007]*)([A-Za-z0-9]*)$/;
+  const [_, 非英文部分, 英文部分] = 输入字段.match(pattern) || ["", "", ""];
 
+  const candidatesAmount = vscode.workspace
+    .getConfiguration("拼音输入法")
+    .get("候选词数量") as number;
+  const 输入法提供的词 =
+    (await ime(英文部分, candidatesAmount).catch((e) => {
+      console.error(e);
+      vscode.window.showInformationMessage(`调用输入法出错：` + e);
+    })) || [];
 
-    // 如果分段输入一个词组，例如“多重笛卡尔积”，输入顺序是：先输入“多重”，再输入“笛卡尔积”。
-    // 当输入到“多重d”的时候，变量`输入字段`值为“多重d”。如果直接拿这个词去调用输入法，很难得到正确的结果。
-    // 但如果使用"d"去调用输入法，得到的结果并不以"多重"开头，导致不会弹出提示框。
-    // 因此，这里的方案是，拆分非英文部分和英文部分，用英文部分调用输入法，再在结果前面补上非英文部分。
-    const pattern = /^.*?([\u4e00-\u9fa5\u3007]*)([A-Za-z0-9]*)$/
-    const [_, 非英文部分, 英文部分] = 输入字段.match(pattern) || ['', '', '']
+  let 补全项 = Array.from(输入法提供的词, (v, i) => {
+    const item = new vscode.CompletionItem(
+      v.word,
+      vscode.CompletionItemKind.Text
+    );
+    item.insertText = 非英文部分 + v.word + v.remain;
+    item.sortText = 英文部分 + i.toString();
+    item.label = `${i}\t${item.insertText}\t${英文部分}\t${v.pinyin}`;
+    item.detail = v.pinyin;
+    return item;
+  });
 
+  // 过滤下面的部分
+  // 1 不包含中文的关键词没必要加拼音,因此过滤
+  // 2 现在正在输入的字段不需要加入补全项
+  // 3 无论这个函数是否返回结果,vsc总会检测和自动补全定义的片段(Snippet),所以这里把片段过滤掉.
+  补全项 = 补全项
+    .filter((a) => 包含中文(a.label))
+    .filter((a) => a.label !== 输入字段)
+    .filter((a) => a.kind !== vscode.CompletionItemKind.Snippet);
 
-
-    const candidatesAmount = vscode.workspace.getConfiguration('拼音输入法').get('候选词数量') as number
-    let 输入法提供的词 = await ime(英文部分, candidatesAmount).catch(e => {
-        console.error(e)
-        vscode.window.showInformationMessage(`调用输入法出错：` + e)
-    }) || []
-
-
-
-    let i = 0
-    let 补全项 = Array.from(输入法提供的词, (v) => {
-        let item = new vscode.CompletionItem(v.word, vscode.CompletionItemKind.Text)
-        item.insertText = 非英文部分 + v.word + v.remain
-        item.sortText = 英文部分 + (++i).toString()
-        item.label = i.toString() + ' ' + item.insertText + '\t' + 英文部分 + '\t' + v.pinyin
-        item.detail = v.pinyin
-        return item
-    })
-
-
-    // 过滤下面的部分
-    // 1 不包含中文的关键词没必要加拼音,因此过滤
-    // 2 现在正在输入的字段不需要加入补全项
-    // 3 无论这个函数是否返回结果,vsc总会检测和自动补全定义的片段(Snippet),所以这里把片段过滤掉.
-    补全项 = 补全项.filter(a => 包含中文(a.label))
-        .filter(a => a.label != 输入字段)
-        .filter(a => a.kind != vscode.CompletionItemKind.Snippet)
-
-
-    return new vscode.CompletionList(补全项, true)
+  return new vscode.CompletionList(补全项, true);
 }
 
-
-
-export function resolveCompletionItem(item: any, token: vscode.CancellationToken) {
-    return null
+export function resolveCompletionItem(
+  item: any,
+  token: vscode.CancellationToken
+) {
+  return null;
 }
 
-
-
+// prettier-ignore
 export const triggerCharacters = ['$',
     '一', '乙', '二', '十', '丁', '厂', '七', '卜', '人', '入',
     '八', '九', '几', '儿', '了', '力', '乃', '刀', '又', '三',
