@@ -58,23 +58,37 @@ export class IME {
   ): Promise<{ pinyin: string; word: string }[]> {
     return new Promise((resolve, reject) => {
       // console.log(__dirname + '/test.db');
-      // const db = new sqlite3.Database(__dirname + "/test.db");
-      this.db.all(
-        `SELECT pinyin, word 
+      const onErr = (err: any, row: { pinyin: string; word: string }[]) => {
+        if (err) {
+          reject(err);
+        }
+        const res = Array.from(new Set(row));
+        return resolve(res);
+      };
+
+      // 如果拼音中有通配符，就用LIKE，否则用=
+      if (py.indexOf("%") !== -1) {
+        this.db.all(
+          `SELECT pinyin, word 
           FROM word 
           WHERE pinyin LIKE ? AND LENGTH(word) = ? 
           ORDER BY count DESC 
           LIMIT ${this.candidateAmount};`,
-        py,
-        length,
-        (err: any, row: { pinyin: string; word: string }[]) => {
-          if (err) {
-            reject(err);
-          }
-          const res = Array.from(new Set(row));
-          return resolve(res);
-        }
-      );
+          py,
+          length,
+          onErr
+        );
+      } else {
+        this.db.all(
+          `SELECT pinyin, word 
+          FROM word 
+          WHERE pinyin = ?
+          ORDER BY count DESC 
+          LIMIT ${this.candidateAmount};`,
+          py,
+          onErr
+        );
+      }
     });
   }
 
