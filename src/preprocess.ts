@@ -1,8 +1,10 @@
 import { log } from "console";
 import * as vscode from "vscode";
-import ime from "./ime";
+import { IME } from "./ime";
 import { 包含中文 } from "./util/stringUtil";
 import { 获得当前输入字段 } from "./util/vscUtil";
+
+let ime: IME;
 
 export async function provideCompletionItems(
   document: vscode.TextDocument,
@@ -10,6 +12,13 @@ export async function provideCompletionItems(
   token: vscode.CancellationToken,
   context: vscode.CompletionContext
 ) {
+  if (!ime) {
+    const candidatesAmount = vscode.workspace
+      .getConfiguration("拼音输入法")
+      .get("候选词数量") as number;
+    ime = new IME(candidatesAmount);
+  }
+
   const 输入字段 = (await 获得当前输入字段()) || "";
 
   // 如果分段输入一个词组，例如“多重笛卡尔积”，输入顺序是：先输入“多重”，再输入“笛卡尔积”。
@@ -19,16 +28,14 @@ export async function provideCompletionItems(
   const pattern = /^.*?([\u4e00-\u9fa5\u3007]*)([A-Za-z0-9]*)$/;
   const [_, 非英文部分, 英文部分] = 输入字段.match(pattern) || ["", "", ""];
 
-  const candidatesAmount = vscode.workspace
-    .getConfiguration("拼音输入法")
-    .get("候选词数量") as number;
   const 输入法提供的词 =
-    (await ime(英文部分, candidatesAmount).catch((e) => {
+    (await ime.convert(英文部分).catch((e) => {
       console.error(e);
       vscode.window.showInformationMessage(`调用输入法出错：` + e);
     })) || [];
 
   let 补全项 = Array.from(输入法提供的词, (v, i) => {
+    i = i + 1;
     const item = new vscode.CompletionItem(
       v.word,
       vscode.CompletionItemKind.Text
@@ -410,4 +417,4 @@ export const triggerCharacters = ['$',
     '臀', '藕', '藤', '瞻', '嚣', '鳍', '癞', '瀑', '襟', '璧',
     '戳', '攒', '孽', '蘑', '藻', '鳖', '蹭', '蹬', '簸', '簿',
     '蟹', '靡', '癣', '羹', '鬓', '攘', '蠕', '巍', '鳞', '糯',
-    '譬', '霹', '躏', '髓', '蘸', '镶', '瓤', '矗']
+    '譬', '霹', '躏', '髓', '蘸', '镶', '瓤', '矗'];

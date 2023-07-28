@@ -57,6 +57,7 @@
 		"vscode-test": "^1.5.2"
 	},
 	"dependencies": {
+		"lru-cache": "^10.0.0",
 		"ramda": "^0.27.1",
 		"sqlite3": "^5.0.2"
 	}
